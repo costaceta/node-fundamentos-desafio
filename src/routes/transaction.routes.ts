@@ -1,48 +1,20 @@
 import { Router } from 'express';
-import { uuid } from 'uuidv4';
 
-// import TransactionsRepository from '../repositories/TransactionsRepository';
-// import CreateTransactionService from '../services/CreateTransactionService';
+import TransactionsRepository from '../repositories/TransactionsRepository';
+import CreateTransactionService from '../services/CreateTransactionService';
 
 const transactionRouter = Router();
-
-interface Transaction {
-  id: string;
-  title: string;
-  value: number;
-  type: string;
-}
-
-const transactions: Transaction[] = [];
-
-// const transactionsRepository = new TransactionsRepository();
+const transactionsRepository = new TransactionsRepository();
 
 transactionRouter.get('/', (request, response) => {
   try {
-    const countIncome = transactions
-      .filter(transaction => transaction.type === 'income')
-      .reduce((total, transaction) => (total += transaction.value), 0);
+    const transactions = transactionsRepository.all();
+    const balance = transactionsRepository.getBalance();
 
-    const countOutcome = transactions.reduce((total, trasaction) => {
-      if (trasaction.type === 'outcome') {
-        return (total += trasaction.value);
-      } else {
-        return total;
-      }
-    }, 0);
-
-    const balanceTotal = countIncome - countOutcome;
-
-    const transactionsList = {
+    return response.json({
       transactions,
-      balance: {
-        income: countIncome,
-        outcome: countOutcome,
-        total: balanceTotal,
-      },
-    };
-
-    return response.json(transactionsList);
+      balance,
+    });
   } catch (err) {
     return response.status(400).json({ error: err.message });
   }
@@ -52,14 +24,15 @@ transactionRouter.post('/', (request, response) => {
   try {
     const { title, value, type } = request.body;
 
-    const transaction = {
-      id: uuid(),
+    const createTransaction = new CreateTransactionService(
+      transactionsRepository,
+    );
+
+    const transaction = createTransaction.execute({
       title,
       value,
       type,
-    };
-
-    transactions.push(transaction);
+    });
 
     return response.json(transaction);
   } catch (err) {
